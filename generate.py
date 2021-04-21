@@ -2,7 +2,8 @@ import argparse
 
 import torch
 from torchvision import utils
-from model import Generator
+from model import Generator as Generator
+from swagan import Generator as SWAGenerator
 from tqdm import tqdm
 
 
@@ -62,18 +63,28 @@ if __name__ == "__main__":
         default=2,
         help="channel multiplier of the generator. config-f = 2, else = 1",
     )
+    parser.add_argument(
+        "--swagan",
+        action="store_true",
+        help="use swagan",
+    )
 
     args = parser.parse_args()
 
     args.latent = 512
     args.n_mlp = 8
 
-    g_ema = Generator(
-        args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier
-    ).to(device)
+    if args.swagan:
+        g_ema = SWAGenerator(
+            args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier
+        ).to(device)
+    else:
+        g_ema = Generator(
+            args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier
+        ).to(device)
     checkpoint = torch.load(args.ckpt)
 
-    g_ema.load_state_dict(checkpoint["g_ema"])
+    g_ema.load_state_dict(checkpoint["g_ema"], strict=False)
 
     if args.truncation < 1:
         with torch.no_grad():

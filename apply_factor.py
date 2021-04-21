@@ -3,8 +3,8 @@ import argparse
 import torch
 from torchvision import utils
 
-from model import Generator
-
+from model import Generator as Generator
+from swagan import Generator as SWAGenerator
 
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
@@ -47,6 +47,16 @@ if __name__ == "__main__":
         help="filename prefix to result samples",
     )
     parser.add_argument(
+        "--swagan",
+        action="store_true",
+        help="channel multiplier of the generator. config-f = 2, else = 1",
+    )
+    parser.add_argument(
+        "--create_multiple",
+        action="store_true",
+        help="channel multiplier of the generator. config-f = 2, else = 1",
+    )
+    parser.add_argument(
         "factor",
         type=str,
         help="name of the closed form factorization result factor file",
@@ -56,7 +66,10 @@ if __name__ == "__main__":
 
     eigvec = torch.load(args.factor)["eigvec"].to(args.device)
     ckpt = torch.load(args.ckpt)
-    g = Generator(args.size, 512, 8, channel_multiplier=args.channel_multiplier).to(args.device)
+    if args.swagan:
+        g = SWAGenerator(args.size, 512, 8, channel_multiplier=args.channel_multiplier).to(args.device)
+    else:
+        g = Generator(args.size, 512, 8, channel_multiplier=args.channel_multiplier).to(args.device)
     g.load_state_dict(ckpt["g_ema"], strict=False)
 
     trunc = g.mean_latent(4096)
@@ -64,31 +77,110 @@ if __name__ == "__main__":
     latent = torch.randn(args.n_sample, 512, device=args.device)
     latent = g.get_latent(latent)
 
-    direction = args.degree * eigvec[:, args.index].unsqueeze(0)
+    if args.create_multiple:
+        for idx in range(args.index):
+            direction = args.degree * eigvec[:, idx].unsqueeze(0)
 
-    img, _ = g(
-        [latent],
-        truncation=args.truncation,
-        truncation_latent=trunc,
-        input_is_latent=True,
-    )
-    img1, _ = g(
-        [latent + direction],
-        truncation=args.truncation,
-        truncation_latent=trunc,
-        input_is_latent=True,
-    )
-    img2, _ = g(
-        [latent - direction],
-        truncation=args.truncation,
-        truncation_latent=trunc,
-        input_is_latent=True,
-    )
+            img, _ = g(
+                [latent],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img1, _ = g(
+                [latent + 0.5 * direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img_1, _ = g(
+                [latent - 0.5 * direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img2, _ = g(
+                [latent + direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img_2, _ = g(
+                [latent - direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img_3, _ = g(
+                [latent - 2. * direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
+            img3, _ = g(
+                [latent + 2. * direction],
+                truncation=args.truncation,
+                truncation_latent=trunc,
+                input_is_latent=True,
+            )
 
-    grid = utils.save_image(
-        torch.cat([img1, img, img2], 0),
-        f"{args.out_prefix}_index-{args.index}_degree-{args.degree}.png",
-        normalize=True,
-        range=(-1, 1),
-        nrow=args.n_sample,
-    )
+            grid = utils.save_image(
+                torch.cat([img_3, img_2, img_1, img, img1, img2, img3], 0),
+                f"./factor/{args.out_prefix}_index-{idx}_degree-{args.degree}.png",
+                normalize=True,
+                range=(-1, 1),
+                nrow=args.n_sample,
+            )
+    else:
+        direction = args.degree * eigvec[:, args.index].unsqueeze(0)
+
+        img, _ = g(
+            [latent],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img1, _ = g(
+            [latent + 0.5 * direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img_1, _ = g(
+            [latent - 0.5 * direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img2, _ = g(
+            [latent + direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img_2, _ = g(
+            [latent - direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img_3, _ = g(
+            [latent - 2. * direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+        img3, _ = g(
+            [latent + 2. * direction],
+            truncation=args.truncation,
+            truncation_latent=trunc,
+            input_is_latent=True,
+        )
+
+        grid = utils.save_image(
+            torch.cat([img_3, img_2, img_1, img, img1, img2, img3], 0),
+            f"./factor/{args.out_prefix}_index-{args.index}_degree-{args.degree}.png",
+            normalize=True,
+            range=(-1, 1),
+            nrow=args.n_sample,
+        )

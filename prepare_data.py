@@ -8,11 +8,14 @@ import lmdb
 from tqdm import tqdm
 from torchvision import datasets
 from torchvision.transforms import functional as trans_fn
-
+from custom_transforms import resizekeepaspect, zeropad
+import cv2
 
 def resize_and_convert(img, size, resample, quality=100):
-    img = trans_fn.resize(img, size, resample)
-    img = trans_fn.center_crop(img, size)
+    img = resizekeepaspect(img, size, resample)
+    img = zeropad(img, size)
+    #TODO need to check here may need to turn it from an np array to a pil image again
+
     buffer = BytesIO()
     img.save(buffer, format="jpeg", quality=quality)
     val = buffer.getvalue()
@@ -21,7 +24,7 @@ def resize_and_convert(img, size, resample, quality=100):
 
 
 def resize_multiple(
-    img, sizes=(128, 256, 512, 1024), resample=Image.LANCZOS, quality=100
+    img, sizes=(128, 256, 512, 1024), resample=cv2.INTER_NEAREST, quality=100
 ):
     imgs = []
 
@@ -40,9 +43,7 @@ def resize_worker(img_file, sizes, resample):
     return i, out
 
 
-def prepare(
-    env, dataset, n_worker, sizes=(128, 256, 512, 1024), resample=Image.LANCZOS
-):
+def prepare(env, dataset, n_worker, sizes=(128, 256, 512, 1024), resample=cv2.INTER_NEAREST):
     resize_fn = partial(resize_worker, sizes=sizes, resample=resample)
 
     files = sorted(dataset.imgs, key=lambda x: x[0])
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    resample_map = {"lanczos": Image.LANCZOS, "bilinear": Image.BILINEAR}
+    resample_map = {"lanczos": cv2.LANCZOS, "bilinear": cv2.BILINEAR, "nearest": cv2.INTER_NEAREST}
     resample = resample_map[args.resample]
 
     sizes = [int(s.strip()) for s in args.size.split(",")]

@@ -11,7 +11,7 @@ from torch.utils import data
 import torch.distributed as dist
 from torchvision import transforms, utils
 from tqdm import tqdm
-
+from custom_transforms import GrayScaleTransform, ZeroPad, ResizeKeepAspect
 try:
     import wandb
 
@@ -349,7 +349,7 @@ if __name__ == "__main__":
         help="number of the samples generated during training",
     )
     parser.add_argument(
-        "--size", type=int, default=256, help="image sizes for the model"
+        "--size", type=int, default=1024, help="image sizes for the model"
     )
     parser.add_argument(
         "--r1", type=float, default=10, help="weight of the r1 regularization"
@@ -512,6 +512,7 @@ if __name__ == "__main__":
     transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(),
+            GrayScaleTransform(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
