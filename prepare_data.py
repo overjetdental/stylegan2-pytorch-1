@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    resample_map = {"lanczos": cv2.LANCZOS, "bilinear": cv2.BILINEAR, "nearest": cv2.INTER_NEAREST}
+    resample_map = {"nearest": cv2.INTER_NEAREST}
     resample = resample_map[args.resample]
 
     sizes = [int(s.strip()) for s in args.size.split(",")]
