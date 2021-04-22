@@ -10,11 +10,13 @@ from torchvision import datasets
 from torchvision.transforms import functional as trans_fn
 from custom_transforms import resizekeepaspect, zeropad
 import cv2
+import numpy as np
+
 
 def resize_and_convert(img, size, resample, quality=100):
     img = resizekeepaspect(img, size, resample)
     img = zeropad(img, size)
-    #TODO need to check here may need to turn it from an np array to a pil image again
+    img = Image.fromarray(np.uint8(img))
 
     buffer = BytesIO()
     img.save(buffer, format="jpeg", quality=quality)
@@ -23,11 +25,8 @@ def resize_and_convert(img, size, resample, quality=100):
     return val
 
 
-def resize_multiple(
-    img, sizes=(128, 256, 512, 1024), resample=cv2.INTER_NEAREST, quality=100
-):
+def resize_multiple(img, sizes=(128, 256, 512, 1024), resample=cv2.INTER_NEAREST, quality=100):
     imgs = []
-
     for size in sizes:
         imgs.append(resize_and_convert(img, size, resample, quality))
 
@@ -66,7 +65,11 @@ def prepare(env, dataset, n_worker, sizes=(128, 256, 512, 1024), resample=cv2.IN
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocess images for model training")
-    parser.add_argument("--out", type=str, help="filename of the result lmdb dataset")
+    parser.add_argument(
+        "--out",
+        type=str,
+        help="filename of the result lmdb dataset"
+    )
     parser.add_argument(
         "--size",
         type=str,
@@ -82,7 +85,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--resample",
         type=str,
-        default="lanczos",
+        default="nearest",
         help="resampling methods for resizing images",
     )
     parser.add_argument("path", type=str, help="path to the image dataset")
